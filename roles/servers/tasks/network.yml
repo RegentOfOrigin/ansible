@@ -1,0 +1,63 @@
+- name: network | Configure avahi-daemon
+  notify: restart
+  ansible.builtin.copy:
+    src: avahi-daemon.conf
+    dest: /etc/avahi/
+    mode: '0644'
+
+- name: network | Disable cloud-init network config
+  notify: restart
+  ansible.builtin.copy:
+    src: 99-disable-network-config.cfg
+    dest: /etc/cloud/cloud.cfg.d/
+    mode: '0644'
+
+- name: network | Mask NetworkManager pre-installed globally-managed devices
+  notify: NetworkManager
+  ansible.builtin.file:
+    modification_time: preserve
+    access_time: preserve
+    path: /etc/NetworkManager/conf.d/10-globally-managed-devices.conf
+    state: touch
+    mode: '0644'
+
+- name: network | Hook NetworkManager into ifdown for managing new devices
+  notify: NetworkManager
+  ansible.builtin.copy:
+    src: ifdown.conf
+    dest: /etc/NetworkManager/conf.d/ifdown.conf
+    mode: '0644'
+
+- name: network | Set netplan facts
+  ansible.builtin.set_fact:
+    netplan:
+      renderer: "{{ lookup('ansible.builtin.pipe', 'netplan get renderer') }}"
+
+- name: network | Symlink the correct resolv.conf
+  ansible.builtin.file:
+    src: /run/systemd/resolve/stub-resolv.conf
+    dest: /etc/resolv.conf
+    state: link
+    force: true
+
+- name: network | Remove redundant netplan config
+  ansible.builtin.file:
+    path: /etc/netplan/00-installer-config.yaml
+    state: absent
+  notify: netplan
+
+- name: network | Set renderer
+  ansible.utils.update_fact:
+    updates:
+      - path: netplan.renderer
+        value: NetworkManager
+  when:
+    - netplan.renderer != 'NetworkManager'
+    - lookup('ansible.builtin.pipe', 'netplan set renderer=NetworkManager')
+  notify: netplan
+
+- name: network | Mask networkd wait service
+  ansible.builtin.service:
+    name: systemd-networkd-wait-online.service
+    masked: true
+    enabled: false

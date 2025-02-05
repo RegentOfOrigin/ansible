@@ -1,0 +1,3 @@
+servers_packages:
+  - "{{ servers_packages }}"
+  - linux-modules-extra-raspi

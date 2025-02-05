@@ -1,0 +1,9 @@
+- name: Not Kubernetes
+  hosts: all:!kubernetes
+  roles:
+    - servers
+
+- name: Kubernetes
+  hosts: kubernetes
+  roles:
+    - kubernetes

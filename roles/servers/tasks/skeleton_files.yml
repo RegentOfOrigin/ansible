@@ -1,0 +1,12 @@
+- name: skeleton_files | Remove from skeleton directory
+  ansible.builtin.find:
+    path: "/etc/skel/{{ file_to_delete }}"
+    state: absent
+
+- name: skeleton_files | Remove from user directory
+  loop: "{{ query('community.general.flattened', servers_admin_users) | unique }}"
+  loop_control:
+    loop_var: admin_user
+  ansible.builtin.file:
+    path: "~{{ admin_user }}/{{ file_to_delete }}"
+    state: absent

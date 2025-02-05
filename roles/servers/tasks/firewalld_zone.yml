@@ -1,0 +1,39 @@
+- name: firewalld_zone | Ensure zone exists
+  ansible.posix.firewalld:
+    permanent: true
+    immediate: true
+    zone: "{{ firewall_config.zone | mandatory(msg='servers_firewall_zone_configs must have a zone key') }}"
+    state: present
+
+- name: firewalld_zone | Set target
+  when: firewall_config.target
+  ansible.posix.firewalld:
+    permanent: true
+    immediate: true
+    zone: "{{ firewall_config.zone }}"
+    target: "{{ firewall_config.target }}"
+    state: present
+
+- name: firewalld_zone | Add interface(s)
+  loop: "{{ firewall_config.interfaces | default([]) }}"
+  loop_control:
+    loop_var: firewall_interface
+  when: firewall_config.interfaces
+  ansible.posix.firewalld:
+    permanent: true
+    immediate: true
+    zone: "{{ firewall_config.zone }}"
+    interface: "{{ firewall_interface }}"
+    state: enabled
+
+- name: firewalld_zone | Add CIDR(s)
+  loop: "{{ firewall_config.sources | default([]) }}"
+  loop_control:
+    loop_var: firewall_source
+  when: firewall_config.sources
+  ansible.posix.firewalld:
+    permanent: true
+    immediate: true
+    zone: "{{ firewall_config.zone }}"
+    source: "{{ firewall_source }}"
+    state: enabled

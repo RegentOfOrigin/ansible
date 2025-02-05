@@ -1,0 +1,54 @@
+" Use Vim settings
+set nocompatible
+
+" allow mouse stuff with xterm
+if &term=~"xterm"
+    set term=xterm-16color
+    set <BS>=^?
+    set mouse=a
+endif
+fixdel
+syntax enable
+
+set ruler          " displays the 'ruler' at the bottom-right of the screen
+set number         " precede each line with its line number.
+
+" colorscheme
+colorscheme torte  " sets the color scheme
+
+" search options
+set hlsearch       " hilight the items found by the search
+set ignorecase     " ignores case of letters on searches
+set smartcase      " Override the 'ignorecase' option if the search pattern
+                   " contains upper case characters
+"set scrolloff=999  " number of screen lines to keep above and below the cursor
+                   " If set to a very large value (999) the cursor line will
+                   " always be in the middle of the window
+
+
+set nowrap guioptions+=b " no line wrapping; add a horizontal scrollbar to the bottom
+
+
+"indentation
+set smartindent    " smart indent of code - indent after opening '{',
+
+" this make it so that comments are not placed in the first
+"column.  They stay at their current indent level
+inoremap # X^H#
+set autoindent     " Copy indent from current line when starting a new line
+
+"set foldmethod=indent
+"set foldlevel=10
+
+set guifont=7x13
+
+:highlight search guifg=yellow guibg=darkred
+
+" line length
+set textwidth=78   " Maximum width of text that is being inserted.  A longer
+                   " line will be broken after white space to get this width
+
+set tabstop=2      " Number of spaces that a <Tab> in the file counts for.
+set expandtab      " convert all typed tabs into spaces
+set shiftwidth=2   " Number of spaces to use for each step of (auto)indent
+set shiftround     " Round indent to multiple of 'shiftwidth'

@@ -1,0 +1,53 @@
+- name: Set package_architecture fact
+  ansible.builtin.set_fact:
+    cacheable: true
+    package_architecture: "{{ lookup('ansible.builtin.pipe', 'dpkg --print-architecture') }}"
+
+- name: Include tasks specific to a host group
+  loop: "{{ group_names }}"
+  loop_control:
+    loop_var: group_name
+  ansible.builtin.include_tasks: "{{ group_name }}.yml"
+  when: lookup('ansible.builtin.first_found', group_name + '.yml')
+
+- name: Configure snap
+  when: server_snap_enabled
+  ansible.builtin.import_tasks: snap.yml
+
+- name: Remove skeleton files
+  loop:
+    - .bash_logout
+    - .bashrc
+    - .profile
+  loop_control:
+    loop_var: file_to_delete
+  ansible.builtin.include_tasks: skeleton_files.yml
+
+- name: Admin groups
+  loop: "{{ query('community.general.flattened', servers_admin_groups) | unique }}"
+  loop_control:
+    loop_var: admin_group
+  ansible.builtin.include_tasks: admin_group.yml
+
+- name: Global default configs
+  ansible.builtin.import_tasks: configs.yml
+
+- name: Network
+  ansible.builtin.import_tasks: network.yml
+
+- name: Firewall zones
+  loop: "{{ query('community.general.flattened', servers_firewall_zone_configs) | unique }}"
+  loop_control:
+    loop_var: firewall_config
+    label: "{{ firewall_config.zone | mandatory }}"
+  ansible.builtin.include_tasks: firewalld_zone.yml
+
+- name: Gather information about active zones
+  register: firewall_info
+  ansible.posix.firewalld_info:
+    active_zones: true
+
+- name: Set default zone
+  when: firewall_info.firewalld_info.default_zone != server_firewall_default_zone
+  ansible.builtin.command: "firewall-cmd --set-default-zone={{ server_firewall_default_zone | default('public') }}"
+  changed_when: true

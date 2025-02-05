@@ -1,0 +1,65 @@
+servers_admin_groups:
+  - "{{ server_admin_groups }}"
+  - lxd
+  - libvirt
+  - docker
+
+servers_apt_repos:
+  - "{{ server_apt_repos }}"
+  - name: 45drives
+    types: deb
+    uris: https://repo.45drives.com/debian
+    suites: focal
+    components: main
+    architectures: amd64
+    key:
+      url: https://repo.45drives.com/key/gpg.asc
+      type: asc
+
+servers_apt_preferences:
+  - "{{ servers_apt_preferences }}"
+  - name: focal
+    package: '*'
+    pin: release n=focal
+    priority: 400
+
+servers_packages:
+  - "{{ server_packages }}"
+  - nfs-kernel-server
+  - zfsutils-linux
+  - cockpit-benchmark
+  - cockpit-navigator
+  - cockpit-file-sharing
+  - cockpit-45drives-hardware
+  - cockpit-identities
+  - cockpit-machines
+  - cockpit-scheduler
+  - cockpit-zfs
+  - tuned
+  - tmux
+  - htop
+
+servers_cockpit_overrides:
+  - "{{ servers_cockpit_overrides }}"
+  - name: 45drives-disks
+    content:
+      menu:
+        45drives-disks:
+          label: Disks
+          order: 30
+  - name: 45drives-motherboard
+    content:
+      menu:
+        45drives-motherboard: null
+  - name: 45drives-system
+    content:
+      menu:
+        45drives-system:
+          label: System
+          order: 12
+  - name: zfs
+    content:
+      menu:
+        zfs:
+          label: ZFS
+          order: 39

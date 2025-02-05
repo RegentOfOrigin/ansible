@@ -1,0 +1,38 @@
+server_packages:
+  - "{{ servers_packages }}"
+  - docker-ce
+  - fwupd
+  - tmux
+  - htop
+server_admin_groups:
+  - "{{ servers_admin_groups }}"
+  - lxd
+  - libvirt
+  - docker
+server_apt_repos:
+  - "{{ servers_apt_repos }}"
+  - name: docker
+    types: deb
+    uris: https://download.docker.com/linux/ubuntu
+    components: stable
+    key:
+      url: https://download.docker.com/linux/ubuntu/gpg
+      type: asc
+  - name: filebot
+    types: deb
+    uris: https://get.filebot.net/deb/
+    suite: universal
+    components: main
+    architectures: all
+    key:
+      url: https://raw.githubusercontent.com/filebot/plugins/master/gpg/maintainer.pub
+      type: asc
+  - name: mkvtoolnix
+    types:
+      - deb
+      - deb-src
+    uris: https://mkvtoolnix.download/ubuntu/
+    components: main
+    key:
+      url: https://mkvtoolnix.download/gpg-pub-moritzbunkus.gpg
+      type: gpg

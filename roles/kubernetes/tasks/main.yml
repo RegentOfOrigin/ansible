@@ -1,0 +1,9 @@
+- name: microk8s # noqa: name[casing]
+  ansible.builtin.import_tasks: microk8s.yml
+
+- name: Add helm charts
+  loop: "{{ query('community.general.flattened', kubernetes_helm_charts) | unique }}"
+  loop_control:
+    loop_var: chart
+    label: "{{ chart.name }}"
+  kubernetes.core.helm: "{{ chart }}"

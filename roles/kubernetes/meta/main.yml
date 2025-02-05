@@ -1,0 +1,24 @@
+dependencies:
+  - role: servers
+    vars:
+      servers_admin_groups:
+        - "{{ servers_admin_groups }}"
+        - microk8s
+      servers_firewall_zone_configs:
+        - "{{ servers_firewall_zone_configs }}"
+        - zone: kubernetes
+          target: ACCEPT
+          interfaces:
+            - vxlan.calico
+      servers_snap_enabled: true
+      servers_snaps:
+        - "{{ servers_snaps }}"
+        - name: microk8s
+          classic: true
+          channel: latest/stable
+      servers_snap_aliases:
+        - "{{ servers_snap_aliases }}"
+        - name: kubectl
+          target: microk8s.kubectl
+        - name: helm
+          target: microk8s.helm

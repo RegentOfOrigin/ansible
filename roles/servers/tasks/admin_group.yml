@@ -1,0 +1,15 @@
+- name: admin_group | Create
+  ansible.builtin.group:
+    name: "{{ admin_group }}"
+    state: present
+    system: true
+
+- name: admin_group | Add admin users
+  loop: "{{ query('community.general.flattened', admin_users) | unique }}"
+  loop_control:
+    loop_var: user
+  ansible.builtin.user:
+    name: "{{ user.name | mandatory(msg='servers_admin_users entries must have a name key') }}"
+    groups: "{{ lookup('community.general.flattened', servers_admin_groups) | unique }}"
+    append: true
+    state: present

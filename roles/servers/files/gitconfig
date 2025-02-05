@@ -1,0 +1,8 @@
+[core]
+        symlinks = true
+[push]
+        autoSetupRemote = true
+[merge]
+        ff = false
+[init]
+        defaultBranch = main
