@@ -1,0 +1,68 @@
+- name: network-manager | Enable
+  ansible.builtin.service:
+    name: NetworkManager.service
+    state: started
+    enabled: true
+
+- name: network-manager | Disable cloud-init network config
+  when: (lookup('ansible.builtin.pipe', 'cloud-init status || true') | from_yaml)['status'] == 'disabled'
+  notify: restart
+  ansible.builtin.copy:
+    src: 99-disable-network-config.cfg
+    dest: /etc/cloud/cloud.cfg.d/
+    mode: '0644'
+
+- name: network-manager | Mask pre-installed globally-managed devices
+  notify: NetworkManager
+  ansible.builtin.file:
+    modification_time: preserve
+    access_time: preserve
+    path: /etc/NetworkManager/conf.d/10-globally-managed-devices.conf
+    state: touch
+    mode: '0644'
+
+- name: network-manager | Netplan
+  when: lookup('ansible.builtin.pipe', 'which netplan info || true')
+  block:
+    - name: network-manager | Hook into ifdown for managing new devices
+      notify: NetworkManager
+      ansible.builtin.copy:
+        src: ifdown.conf
+        dest: /etc/NetworkManager/conf.d/ifdown.conf
+        mode: '0644'
+
+    - name: network-manager | Set netplan facts
+      ansible.builtin.set_fact:
+        netplan:
+          renderer: "{{ lookup('ansible.builtin.pipe', 'netplan get renderer') }}"
+
+    - name: network-manager | Symlink the correct resolv.conf
+      when: ansible_facts.services['systemd-resolved.service']
+      ansible.builtin.file:
+        src: /run/systemd/resolve/stub-resolv.conf
+        dest: /etc/resolv.conf
+        state: link
+        force: true
+
+    - name: network-manager | Remove redundant config
+      notify: netplan
+      ansible.builtin.file:
+        path: /etc/netplan/00-installer-config.yaml
+        state: absent
+
+    - name: network-manager | Set renderer
+      when:
+        - ansible_facts.netplan.renderer != 'NetworkManager'
+        - lookup('ansible.builtin.pipe', 'netplan set renderer=NetworkManager')
+      notify: netplan
+      ansible.utils.update_fact:
+        updates:
+          - path: netplan.renderer
+            value: NetworkManager
+
+- name: network-manager | Mask networkd-wait-online to avoid timeouts
+  when: ansible_facts.services['systemd-networkd-wait-online.service']
+  ansible.builtin.service:
+    name: systemd-networkd-wait-online.service
+    masked: true
+    enabled: false

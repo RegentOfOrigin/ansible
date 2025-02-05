@@ -6,6 +6,7 @@
 - name: Apply netplan changes
   listen: netplan
   changed_when: true
+  notify: NetworkManager
   ansible.builtin.command: netplan apply
 
 - name: Restart NetworkManager

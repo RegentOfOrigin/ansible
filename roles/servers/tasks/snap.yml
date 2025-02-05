@@ -1,28 +1,16 @@
-- name: snap | Enable snapd
-  ansible.builtin.service:
-    name: snapd
-    state: started
-    enabled: true
-
-- name: snap | Install
-  loop: "{{ query('community.general.flattened', servers_snaps) | unique }}"
-  loop_control:
-    loop_var: snap
-  community.general.snap: "{{ snap }}"
+- name: snap | Install # noqa: no-free-form
+  community.general.snap: "{{ snap | community.general.remove_keys(target=['aliases']) }}"
 
 - name: snap | Enable
-  loop: "{{ query('community.general.flattened', servers_snaps) | unique }}"
-  loop_control:
-    loop_var: snap
   community.general.snap:
-    name: "{{ snap }}"
+    name: "{{ snap.name }}"
     state: enabled
 
-- name: snap | Create snap aliases
-  loop: "{{ query('community.general.flattened', servers_snap_aliases) | unique }}"
+- name: snap | Create aliases
+  loop: "{{ snap.aliases }}"
   loop_control:
-    loop_var: snap_alias
-    label: "{{ snap_alias.alias }}"
+    loop_var: alias
+    label: "{{ alias }}"
   community.general.snap_alias:
-    name: "{{ snap_alias.target }}"
-    alias: "{{ snap_alias.alias }}"
+    name: "{{ snap.name }}.{{ alias }}"
+    alias: "{{ alias }}"

@@ -1,4 +1,4 @@
-- name: microk8s # noqa: name[casing]
+- name: Microk8s
   ansible.builtin.import_tasks: microk8s.yml
 
 - name: Add helm charts

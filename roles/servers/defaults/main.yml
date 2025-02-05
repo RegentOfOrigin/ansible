@@ -9,7 +9,7 @@ servers_packages:
   - cockpit
   - cockpit-sosreport
   - udisks2-lvm2
-servers_admin_users: []
+servers_users: []
 
 servers_admin_groups:
   - sudo

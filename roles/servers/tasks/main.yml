@@ -1,18 +1,12 @@
-- name: Set package_architecture fact
-  ansible.builtin.set_fact:
-    cacheable: true
-    package_architecture: "{{ lookup('ansible.builtin.pipe', 'dpkg --print-architecture') }}"
+- name: Populate service facts
+  ansible.builtin.service_facts:
 
 - name: Include tasks specific to a host group
   loop: "{{ group_names }}"
   loop_control:
     loop_var: group_name
-  ansible.builtin.include_tasks: "{{ group_name }}.yml"
   when: lookup('ansible.builtin.first_found', group_name + '.yml')
-
-- name: Configure snap
-  when: server_snap_enabled
-  ansible.builtin.import_tasks: snap.yml
+  ansible.builtin.include_tasks: "{{ group_name }}.yml"
 
 - name: Remove skeleton files
   loop:
@@ -20,8 +14,8 @@
     - .bashrc
     - .profile
   loop_control:
-    loop_var: file_to_delete
-  ansible.builtin.include_tasks: skeleton_files.yml
+    loop_var: skeleton_file
+  ansible.builtin.include_tasks: skeleton_file.yml
 
 - name: Admin groups
   loop: "{{ query('community.general.flattened', servers_admin_groups) | unique }}"
@@ -32,22 +26,49 @@
 - name: Global default configs
   ansible.builtin.import_tasks: configs.yml
 
-- name: Network
-  ansible.builtin.import_tasks: network.yml
+- name: Configure avahi-daemon
+  notify: restart
+  ansible.builtin.copy:
+    src: avahi-daemon.conf
+    dest: /etc/avahi/
+    mode: '0644'
 
-- name: Firewall zones
-  loop: "{{ query('community.general.flattened', servers_firewall_zone_configs) | unique }}"
-  loop_control:
-    loop_var: firewall_config
-    label: "{{ firewall_config.zone | mandatory }}"
-  ansible.builtin.include_tasks: firewalld_zone.yml
+- name: NetworkManager
+  ansible.builtin.import_tasks: network-manager.yml
 
-- name: Gather information about active zones
-  register: firewall_info
-  ansible.posix.firewalld_info:
-    active_zones: true
+- name: Firewall
+  block:
+    - name: Enable firewalld
+      ansible.builtin.service:
+        name: firewalld.service
+        state: started
+        enabled: true
 
-- name: Set default zone
-  when: firewall_info.firewalld_info.default_zone != server_firewall_default_zone
-  ansible.builtin.command: "firewall-cmd --set-default-zone={{ server_firewall_default_zone | default('public') }}"
-  changed_when: true
+    - name: Firewall zones
+      loop: "{{ query('community.general.flattened', servers_firewall_zone_configs) | unique }}"
+      loop_control:
+        loop_var: firewalld_zone
+        label: "{{ firewalld_zone.name | mandatory('firewall_zone_configs entries require a name key') }}"
+      ansible.builtin.include_tasks: firewalld_zone.yml
+
+    - name: Disable ufw
+      when: ansible_facts.services['ufw.service']
+      ansible.builtin.service:
+        name: ufw.service
+        state: stopped
+        enabled: false
+
+- name: Configure snap
+  when: server_snap_enabled
+  block:
+    - name: Enable snapd
+      ansible.builtin.service:
+        name: snapd
+        state: started
+        enabled: true
+
+    - name: Install snaps
+      loop: "{{ query('community.general.flattened', servers_snaps) | unique }}"
+      loop_control:
+        loop_var: snap
+      ansible.builtin.include_tasks: snap.yml

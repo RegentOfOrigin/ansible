@@ -2,38 +2,60 @@
   ansible.posix.firewalld:
     permanent: true
     immediate: true
-    zone: "{{ firewall_config.zone | mandatory(msg='servers_firewall_zone_configs must have a zone key') }}"
+    zone: "{{ firewalld_zone.zone | mandatory(msg='servers_firewall_zone_configs must have a zone key') }}"
+    state: present
+
+- name: firewalld_zone | Add service(s)
+  loop: "{{ firewalld_zone.services | default([]) }}"
+  loop_control:
+    loop_var: firewall_service
+  when: firewalld_zone.target
+  ansible.posix.firewalld:
+    permanent: true
+    immediate: true
+    zone: "{{ firewalld_zone.zone }}"
+    target: "{{ firewall_service }}"
     state: present
 
 - name: firewalld_zone | Set target
-  when: firewall_config.target
+  when: firewalld_zone.target
   ansible.posix.firewalld:
     permanent: true
     immediate: true
-    zone: "{{ firewall_config.zone }}"
-    target: "{{ firewall_config.target }}"
+    zone: "{{ firewalld_zone.zone }}"
+    target: "{{ firewalld_zone.target }}"
     state: present
 
 - name: firewalld_zone | Add interface(s)
-  loop: "{{ firewall_config.interfaces | default([]) }}"
+  loop: "{{ firewalld_zone.interfaces | default([]) }}"
   loop_control:
     loop_var: firewall_interface
-  when: firewall_config.interfaces
+  when: firewalld_zone.interfaces
   ansible.posix.firewalld:
     permanent: true
     immediate: true
-    zone: "{{ firewall_config.zone }}"
+    zone: "{{ firewalld_zone.zone }}"
     interface: "{{ firewall_interface }}"
     state: enabled
 
 - name: firewalld_zone | Add CIDR(s)
-  loop: "{{ firewall_config.sources | default([]) }}"
+  loop: "{{ firewalld_zone.sources | default([]) }}"
   loop_control:
     loop_var: firewall_source
-  when: firewall_config.sources
+  when: firewalld_zone.sources
   ansible.posix.firewalld:
     permanent: true
     immediate: true
-    zone: "{{ firewall_config.zone }}"
+    zone: "{{ firewalld_zone.zone }}"
     source: "{{ firewall_source }}"
     state: enabled
+
+- name: firewalld_zone | Set as default
+  when:
+    - firewalld_zone.default
+    - lookup('ansible.builtin.pipe', 'firewall-cmd --get-default-zone') != firewalld_zone.default
+    - lookup('ansible.builtin.pipe', 'firewall-cmd --set-default-zone=' + firewalld_zone.zone)
+  ansible.utils.update_fact:
+    updates:
+      - path: firewalld.default_zone
+        value: firewalld_zone.zone

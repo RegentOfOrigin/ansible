@@ -1,3 +1,8 @@
+- name: apt | Set package_architecture fact
+  ansible.builtin.set_fact:
+    cacheable: true
+    package_architecture: "{{ lookup('ansible.builtin.pipe', 'dpkg --print-architecture') }}"
+
 - name: apt | Get repository key
   loop: "{{ query('community.general.flattened', server_apt_repos) | unique }}"
   loop_control:
@@ -21,7 +26,7 @@
       Suites: "{{ repository.suites | default(distribution_release) | list | join(' ') }}"
       Components: "{{ repository.components | mandatory(msg='server_apt_repos entries must have a components key') | join(' ') }}"
       Signed-By: "/usr/share/keyrings/{{ repository.name }}.{{ repository.key.type | default(omit) }}"
-      Architectures: "{{ repository.architectures | default(dpkg_architecture) }}"
+      Architectures: "{{ repository.architectures | default(ansible_facts.package_architecture) }}"
   ansible.builtin.copy:
     dest: "/etc/apt/sources.d/{{ repository.name }}"
     content: "{{ repo_content | to_yaml }}"
@@ -52,12 +57,8 @@
     cache_valid_time: 3600
     name: "{{ lookup('community.general.flattened', servers_packages) + (server_snap_enabled | ternary(['snapd'], [])) | unique }}"
 
-- name: apt | Fix package marks
-  register: result
-  changed_when: result.stdout == 'No changes necessary'
-  ansible.builtin.command: apt-mark minimize-manual
-
 - name: apt | Cleanup
+  when: lookup('ansible.builtin.pipe', 'apt-mark minimize-manual')
   ansible.builtin.apt:
     cache_valid_time: 3600
     autoclean: true

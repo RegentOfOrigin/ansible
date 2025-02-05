@@ -10,24 +10,24 @@
   when: not microk8s.running
   block:
     - name: microk8s | Trigger startup
-      ansible.builtin.command: /snap/bin/microk8s start
       changed_when: true
+      ansible.builtin.command: /snap/bin/microk8s start
 
     - name: microk8s | Wait for ready
+      when: lookup('ansible.builtin.pipe', '/snap/bin/microk8s status --wait-ready')
       ansible.utils.update_fact:
         updates:
           - path: microk8s.running
             value: true
-      when: lookup('ansible.builtin.pipe', '/snap/bin/microk8s status --wait-ready')
 
 - name: microk8s | Addons
   loop: "{{ query('community.general.flattened', kubernetes_microk8s_addons) | unique }}"
   loop_control:
     loop_var: microk8s_addon
+  when:
+    - microk8s.addons[addon] != 'enabled'
+    - lookup('ansible.builtin.pipe', 'microk8s enable ' + microk8s_addon)  # I'm not saying I cheated but...
   ansible.utils.update_fact:
     updates:
       - path: "microk8s.addons.{{ addon }}"
         value: enabled
-  when:
-    - microk8s.addons[addon] != 'enabled'
-    - lookup('ansible.builtin.pipe', 'microk8s enable' + microk8s_addon)  # I'm not saying I cheated but...

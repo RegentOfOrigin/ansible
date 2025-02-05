@@ -16,9 +16,10 @@ dependencies:
         - name: microk8s
           classic: true
           channel: latest/stable
-      servers_snap_aliases:
-        - "{{ servers_snap_aliases }}"
-        - name: kubectl
-          target: microk8s.kubectl
-        - name: helm
-          target: microk8s.helm
+          aliases:
+            - kubectl
+            - helm
+
+collections:
+  - ansible.utils
+  - kubernetes.core
