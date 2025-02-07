@@ -1,0 +1,14 @@
+- name: Copy config files
+  become: true
+  loop:
+    - src: avahi-daemon.conf
+      dest: /etc/avahi/
+  loop_control:
+    loop_var: __config_file
+    label: "{{ [__config_file.dest, (__config_file.src | basename)] | path_join }}"
+  ansible.builtin.copy:
+    src: "{{ __config_file.src }}"
+    dest: "{{ __config_file.dest }}"
+    owner: root
+    group: root
+    mode: '0644'

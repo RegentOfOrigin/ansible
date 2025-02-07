@@ -1,0 +1,12 @@
+- name: Enable snapd
+  become: true
+  ansible.builtin.service:
+    name: snapd
+    enabled: true
+    state: started
+
+- name: Install snaps
+  loop: "{{ snaps_snaps | unique }}"
+  loop_control:
+    loop_var: __snap
+  ansible.builtin.include_tasks: snap.yml

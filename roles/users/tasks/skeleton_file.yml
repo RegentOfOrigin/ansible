@@ -1,0 +1,15 @@
+- name: skeleton_file | Remove from skeleton directory
+  become: true
+  ansible.builtin.file:
+    path: "{{ (users_skeleton_dir, __file) | path_join }}"
+    state: absent
+
+- name: skeleton_file | Remove from user directory
+  become: true
+  loop: "{{ (users_users | map(attribute='name') | default([])) + ['root'] }}"
+  loop_control:
+    loop_var: __user
+    label: "{{ __user }}"
+  ansible.builtin.file:
+    path: "{{ '~%s/%s' | format(__user, __file) }}"
+    state: absent

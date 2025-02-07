@@ -1,0 +1,8 @@
+dependencies:
+  - role: apt
+    vars:
+      apt_packages:
+        - firewalld
+
+collections:
+  - ansible.posix

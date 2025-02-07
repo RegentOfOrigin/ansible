@@ -1,0 +1,25 @@
+- name: snap | Install
+  become: true
+  community.general.snap:
+    name: "{{ __snap.name }}"
+    channel: "{{ __snap.channel | default(omit) }}"
+    classic: "{{ __snap.classic | default(omit) }}"
+    dangerous: "{{ __snap.dangerous | default(omit) }}"
+    options: "{{ __snap.options | default(omit) }}"
+    state: "{{ __snap.state | default(omit) }}"
+
+- name: snap | Enable
+  become: true
+  community.general.snap:
+    name: "{{ __snap.name }}"
+    state: enabled
+
+- name: snap | Create aliases
+  become: true
+  loop: "{{ __snap.aliases | default([]) }}"
+  loop_control:
+    loop_var: __alias
+    label: "{{ __alias }}"
+  community.general.snap_alias:
+    name: "{{ '%s.%s' | format(__snap.name, __alias) }}"
+    alias: "{{ __alias }}"

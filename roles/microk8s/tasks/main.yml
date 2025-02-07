@@ -1,0 +1,35 @@
+- name: Collect microk8s facts
+  register: __status
+  changed_when: false
+  ansible.builtin.command: "microk8s status --format yaml"
+
+- name: Set microk8s facts
+  when: not ansible_check_mode
+  ansible.builtin.set_fact:
+    __microk8s:
+      running: "{{ __status.microk8s.running }}"
+      addons: "{{ __status.addons | from_yaml | items2dict('name', 'status') }}"
+
+- name: Trigger startup
+  when:
+    - not ansible_check_mode
+    - not __microk8s.running
+  changed_when: false
+  ansible.builtin.command: microk8s start
+
+- name: Wait for ready
+  when:
+    - not ansible_check_mode
+    - not __microk8s.running
+  changed_when: true
+  ansible.builtin.command: "microk8s status --wait-ready"
+
+- name: Addons
+  loop: "{{ microk8s_addons | default([]) | unique }}"
+  loop_control:
+    loop_var: __addon
+  when:
+    - not ansible_check_mode
+    - __microk8s.addons[__addon] != 'enabled'
+  changed_when: true
+  ansible.builtin.command: "{{ 'microk8s status %s' | format(__addon) }}"

@@ -1,0 +1,4 @@
+- name: Reboot machine
+  listen: reboot
+  ansible.builtin.reboot:
+    connect_timeout: 120

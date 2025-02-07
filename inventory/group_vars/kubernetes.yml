@@ -1,0 +1,35 @@
+helm_charts:
+  - name: csi-driver-nfs
+    chart_repo_url: https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/charts
+    chart_ref: csi-driver-nfs
+    release_namespace: kube-system
+    wait: true
+    atomic: true
+    values:
+      controller:
+        defaultOnDeletePolicy: Archive
+      storageClass:
+        create: true
+        name: nfs
+        annotations:
+          storageclass.kubernetes.io/is-default-class: "true"
+        parameters:
+          server: tartarus.local
+          share: /tank/kubernetes
+          mountPermissions: "0"
+        reclaimPolicy: archive
+        volumeBindingMode: WaitForFirstConsumer
+        mountOptions: []
+
+microk8s_addons:
+  - community
+  - helm3
+  - rbac
+  - hostpath-storage
+  - dns
+  - metallb:10.2.0.1/16
+  - cert-manager
+  - ingress
+  - observability
+  - dashboard
+  - dashboard-ingress

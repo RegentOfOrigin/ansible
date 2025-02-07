@@ -1,0 +1,24 @@
+- name: Install cockpit packages
+  vars:
+    __base_packages:
+      - realmd
+      - pcp
+      - cockpit
+      - cockpit-sosreport
+      - udisks2-lvm2
+    apt_packages: "{{ __base_packages + (cockpit_extension_packages | default([])) }}"
+  ansible.builtin.include_role:
+    name: apt
+
+- name: Set overrides
+  become: true
+  loop: "{{ cockpit_overrides | unique }}"
+  loop_control:
+    loop_var: __override
+    label: "{{ __override.name }}"
+  ansible.builtin.copy:
+    content: "{{ __override.content | to_yaml }}"
+    dest: "{{ '/usr/share/cockpit/%s/override.json' | format(__override.name) }}"
+    owner: root
+    group: root
+    mode: '0644'

@@ -1,0 +1,14 @@
+- name: Apply netplan changes
+  become: true
+  listen: netplan
+  changed_when: true
+  notify: NetworkManager
+  ansible.builtin.command: netplan apply
+
+- name: Restart NetworkManager
+  become: true
+  listen: NetworkManager
+  ansible.builtin.service:
+    name: NetworkManager.service
+    enabled: true
+    state: restarted

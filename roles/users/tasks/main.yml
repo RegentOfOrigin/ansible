@@ -1,0 +1,64 @@
+- name: Remove skeleton files
+  loop:
+    - .bash_logout
+    - .bashrc
+    - .profile
+  loop_control:
+    loop_var: __file
+  ansible.builtin.include_tasks: skeleton_file.yml
+
+- name: Create admin groups
+  become: true
+  loop: "{{ users_admin_groups | unique }}"
+  loop_control:
+    loop_var: __group
+  ansible.builtin.group:
+    name: "{{ __group }}"
+    state: present
+    system: true
+
+- name: Add groups for admin users
+  become: true
+  loop: "{{ users_users | default([]) | unique }}"
+  loop_control:
+    loop_var: __user
+    label: "{{ __user.name }}"
+  when:
+    - __user.admin | default(false)
+    - not ansible_check_mode
+  ansible.builtin.user:
+    name: "{{ __user.name }}"
+    groups: "{{ users_admin_groups | unique }}"
+    append: true
+    state: present
+
+- name: Create sudo rules
+  become: true
+  loop: "{{ users_sudoers | default([]) }}"
+  loop_control:
+    loop_var: __rule
+    label: "{{ __rule.name }}"
+  community.general.sudoers: "{{ __rule }}"
+
+- name: Copy config files
+  become: true
+  loop:
+    - src: bash.bashrc
+      dest: /etc/
+    - src: gitconfig
+      dest: /etc/
+    - src: profile
+      dest: /etc/
+    - src: tmux.conf
+      dest: /etc/
+    - src: vimrc
+      dest: /usr/share/vim/
+  loop_control:
+    loop_var: __config_file
+    label: "{{ [__config_file.dest, (__config_file.src | basename)] | path_join }}"
+  ansible.builtin.copy:
+    src: "{{ __config_file.src }}"
+    dest: "{{ __config_file.dest }}"
+    owner: root
+    group: root
+    mode: '0644'

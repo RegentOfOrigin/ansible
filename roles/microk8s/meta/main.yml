@@ -1,0 +1,24 @@
+dependencies:
+  - role: users
+    vars:
+      users_admin_groups:
+        - microk8s
+  - role: firewalld
+    vars:
+      firewalld_zones:
+        - zone: kubernetes
+          target: ACCEPT
+          interfaces:
+            - vxlan.calico
+  - role: snaps
+    vars:
+      snaps_snaps:
+        - name: microk8s
+          classic: true
+          channel: latest/stable
+          aliases:
+            - kubectl
+            - helm
+
+collections:
+  - ansible.builtin

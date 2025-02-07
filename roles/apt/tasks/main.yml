@@ -1,0 +1,107 @@
+- name: Get package architecture
+  register: __architecture
+  changed_when: false
+  ansible.builtin.command: dpkg --print-architecture
+
+- name: Set package_architecture fact
+  ansible.builtin.set_fact:
+    cacheable: true
+    __apt:
+      architecture: "{{ __architecture }}"
+
+- name: Add apt repositories
+  become: true
+  when: apt_repositories is defined
+  block:
+    - name: Get repository key
+      loop: "{{ apt_repositories | default([]) | unique }}"
+      loop_control:
+        loop_var: __repository
+        label: "{{ __repository.name }}"
+      when: __repository.key is defined
+      ansible.builtin.get_url:
+        url: "{{ __repository.key.url }}"
+        dest: "{{ '/etc/apt/keyrings/%s.%s' | format(__repository.name, __repository.key.type) }}"
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Add repository
+      loop: "{{ apt_repositories | default([]) | unique }}"
+      loop_control:
+        loop_var: __repository
+        label: "{{ __repository.name }}"
+      vars:
+        __content:
+          Types: "{{ __repository.types | join(' ') }}"
+          URIs: "{{ __repository.uris }}"
+          Suites: "{{ __repository.suites | default(ansible_distribution_release) | join(' ') }}"
+          Components: "{{ __repository.components | join(' ') }}"
+          Signed-By: "'/usr/share/keyrings/%s.%s' | format(__repository.name, __repository.key.type) | default(omit) }}"
+          Architectures: "{{ __repository.architectures | default(ansible_facts.__apt.architecture) }}"
+      ansible.builtin.copy:
+        dest: "{{ '/etc/apt/sources.d/%s' | format(__repository.name) }}"
+        content: "{{ __content | to_yaml }}"
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Set preferences
+      loop: "{{ apt_preferences | default([]) | unique }}"
+      loop_control:
+        loop_var: __preference
+        label: "{{ __preference.name }}"
+      vars:
+        __content:
+          Package: "{{ __preference.package }}"
+          Pin: "{{ __preference.pin }}"
+          Pin-Priority: "{{ __preference.priority }}"
+      ansible.builtin.copy:
+        dest: "{{ '/etc/apt/preferences.d/%s' | format(__preference.name) }}"
+        content: "{{ __content | to_yaml }}"
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Update cache
+      ansible.builtin.apt:
+        update_cache: true
+
+- name: Install packages
+  become: true
+  when: apt_packages is defined
+  ansible.builtin.apt:
+    install_recommends: "{{ apt_install_recommends | default(omit) }}"
+    install_suggests: "{{ apt_install_suggests | default(omit) }}"
+    name: "{{ apt_packages | unique }}"
+
+- name: Minimize number of packages marked manual
+  become: true
+  register: __result
+  when: apt_minimize_manual | default(false)
+  changed_when: __result.stdout != 'No changes necessary'
+  ansible.builtin.command: apt-mark minimize-manual
+
+- name: Autoclean
+  become: true
+  when:
+    - apt_autoclean | default(false)
+  ansible.builtin.apt:
+    autoclean: true
+
+- name: Autoremove
+  become: true
+  when:
+    - apt_autoremove | default(false)
+    - not (apt_autopurge | default(false))
+  ansible.builtin.apt:
+    autoremove: true
+    purge: true
+
+- name: Autopurge
+  become: true
+  when:
+    - apt_autopurge | default(false)
+  ansible.builtin.apt:
+    autoremove: true
+    purge: true

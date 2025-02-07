@@ -1,0 +1,83 @@
+- name: Populate service facts
+  ansible.builtin.service_facts:
+
+- name: Enable
+  become: true
+  ansible.builtin.service:
+    name: NetworkManager.service
+    state: started
+    enabled: true
+
+- name: Disable cloud-init network config
+  become: true
+  when:
+    - services['cloud-init.service'] is defined
+    - services['cloud-init.service'] != 'disabled'
+  notify: reboot
+  ansible.builtin.copy:
+    src: 99-disable-network-config.cfg
+    dest: /etc/cloud/cloud.cfg.d/
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Symlink the correct resolv.conf
+  become: true
+  when: services['systemd-resolved.service']
+  ansible.builtin.file:
+    src: /run/systemd/resolve/stub-resolv.conf
+    dest: /etc/resolv.conf
+    state: link
+    force: true
+
+- name: Hook into ifdown for managing new devices
+  become: true
+  notify: NetworkManager
+  ansible.builtin.copy:
+    src: ifdown.conf
+    dest: /etc/NetworkManager/conf.d/ifdown.conf
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Mask pre-installed globally-managed devices
+  become: true
+  notify: NetworkManager
+  ansible.builtin.file:
+    modification_time: preserve
+    access_time: preserve
+    path: /etc/NetworkManager/conf.d/10-globally-managed-devices.conf
+    state: touch
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Get renderer
+  become: true
+  register: __renderer
+  changed_when: false
+  ansible.builtin.command: netplan get renderer
+
+- name: Netplan
+  become: true
+  when: __renderer
+  block:
+    - name: Remove redundant config
+      notify: netplan
+      ansible.builtin.file:
+        path: /etc/netplan/00-installer-config.yaml
+        state: absent
+
+    - name: Set renderer
+      when: __renderer != 'NetworkManager'
+      notify: netplan
+      changed_when: true
+      ansible.builtin.command: netplan set renderer=NetworkManager
+
+- name: Mask networkd-wait-online to avoid timeouts
+  become: true
+  when: services['systemd-networkd-wait-online.service']
+  ansible.builtin.service:
+    name: systemd-networkd-wait-online.service
+    masked: true
+    enabled: false

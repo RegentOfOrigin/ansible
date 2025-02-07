@@ -1,0 +1,69 @@
+- name: zone | Create
+  become: true
+  notify: firewalld
+  when: __zone.zone is defined
+  ansible.posix.firewalld:
+    permanent: true
+    zone: "{{ __zone.zone }}"
+    state: present
+
+- name: zone | Set as default
+  become: true
+  when:
+    - __zone.default | default(false)
+    - __firewalld.default != __zone.zone
+  changed_when: true
+  notify: firewalld
+  ansible.builtin.command: "{{ 'firewall-cmd --set-default-zone=%s' | format(__zone.zone) }}"
+
+- name: zone | Set target
+  become: true
+  when:
+    - __zone.target is defined
+    - not ansible_check_mode
+  notify: firewalld
+  ansible.posix.firewalld:
+    permanent: true
+    zone: "{{ __zone.zone | default(omit) }}"
+    target: "{{ __zone.target }}"
+    state: present
+
+- name: zone | Add service(s)
+  become: true
+  loop: "{{ __zone.services | default([]) }}"
+  loop_control:
+    loop_var: __service
+  notify: firewalld
+  when: not ansible_check_mode
+  ansible.posix.firewalld:
+    permanent: true
+    immediate: true
+    zone: "{{ __zone.zone | default(omit) }}"
+    service: "{{ __service }}"
+    state: enabled
+
+- name: zone | Add interface(s)
+  become: true
+  loop: "{{ __zone.interfaces | default([]) }}"
+  loop_control:
+    loop_var: __interface
+  notify: firewalld
+  when: not ansible_check_mode
+  ansible.posix.firewalld:
+    permanent: true
+    zone: "{{ __zone.zone | default(omit) }}"
+    interface: "{{ __interface }}"
+    state: enabled
+
+- name: zone | Add CIDR(s)
+  become: true
+  loop: "{{ __zone.sources | default([]) }}"
+  loop_control:
+    loop_var: __source
+  notify: firewalld
+  when: not ansible_check_mode
+  ansible.posix.firewalld:
+    permanent: true
+    zone: "{{ __zone.zone | default(omit) }}"
+    source: "{{ __source }}"
+    state: enabled

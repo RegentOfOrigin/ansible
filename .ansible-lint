@@ -12,6 +12,16 @@ enable_list:
   - yaml  # Don't ignore yamllint missing errors
 
 # Stub user input
-extra_vars: {}
+extra_vars:
+  servers_users:
+    - name: test_user
+      admin: true
+      comment: Test User
+      email: test@example.com
+      generate_ssh_key: true
+      group: test_user
+      groups: []
+      password: password
+      update_password: always  # on_create, always
 
 max_block_depth: 2

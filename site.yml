@@ -1,9 +1,162 @@
-- name: Not Kubernetes
-  hosts: all:!kubernetes
+- name: Basic Setup
+  hosts: all
   roles:
-    - servers
+    - firewalld
+    - network_manager
+    - apt
+  vars:
+    firewalld_zones:
+      - zone: internal
+        default: true
+        services:
+          - dhcpv6-client
+          - mdns
+          - samba-client
+          - ssh
+    apt_packages:
+      - avahi-daemon
+      - nfs-common
+      - samba
 
-- name: Kubernetes
+- name: NAS Setup
+  hosts: storinator
+  roles:
+    - cockpit
+  vars:
+    apt_repositories:
+      - name: 45drives
+        types: deb
+        uris: https://repo.45drives.com/debian
+        suites: focal
+        components: main
+        architectures: amd64
+        key:
+          url: https://repo.45drives.com/key/gpg.asc
+          type: asc
+    apt_preferences:
+      - name: focal
+        package: '*'
+        pin: release n=focal
+        priority: 400
+    apt_packages:
+      - nfs-kernel-server
+      - zfsutils-linux
+      - winbind
+      - tmux
+      - htop
+    cockpit_extension_packages:
+      - cockpit-benchmark
+      - cockpit-navigator
+      - cockpit-file-sharing
+      - cockpit-45drives-hardware
+      - cockpit-identities
+      - cockpit-machines
+      - cockpit-scheduler
+      - cockpit-zfs
+    cockpit_overrides:
+      - name: apps
+        content:
+          tools:
+            index: null
+      - name: 45drives-disks
+        content:
+          menu:
+            45drives-disks:
+              label: Disks
+              order: 30
+      - name: 45drives-motherboard
+        content:
+          menu:
+            45drives-motherboard: null
+      - name: 45drives-system
+        content:
+          menu:
+            45drives-system:
+              label: System
+              order: 12
+      - name: zfs
+        content:
+          menu:
+            zfs:
+              label: ZFS
+              order: 39
+
+- name: Raspberry Pi Setup
+  hosts: raspberrypi
+  roles:
+    - apt
+    - __base
+  tasks:
+    - name: Update cgroup options
+      become: true
+      loop:
+        - cgroup_enable=memory
+        - cgroup_memory=1
+      loop_control:
+        loop_var: __option
+      notify: reboot
+      vars:
+        __path: /boot/firmware/cmdline.txt
+      ansible.builtin.lineinfile:
+        path: "{{ __path }}"
+        regexp: '^(.*(?!{{ __option }}).*)$'
+        line: "\\1 {{ __option }}"
+        backrefs: true
+
+    - name: Flush handlers
+      ansible.builtin.meta: flush_handlers
+
+- name: Login Setup
+  hosts: thinkcentre
+  roles:
+    - apt
+    - users
+  vars:
+    apt_repositories:
+      - name: docker
+        types: deb
+        uris: https://download.docker.com/linux/ubuntu
+        components: stable
+        key:
+          url: https://download.docker.com/linux/ubuntu/gpg
+          type: asc
+      - name: filebot
+        types: deb
+        uris: https://get.filebot.net/deb/
+        suite: universal
+        components: main
+        architectures: all
+        key:
+          url: https://raw.githubusercontent.com/filebot/plugins/master/gpg/maintainer.pub
+          type: asc
+      - name: mkvtoolnix
+        types:
+          - deb
+          - deb-src
+        uris: https://mkvtoolnix.download/ubuntu/
+        components: main
+        key:
+          url: https://mkvtoolnix.download/gpg-pub-moritzbunkus.gpg
+          type: gpg
+    apt_packages:
+      - docker-ce
+      - fwupd
+      - tmux
+      - htop
+    users_admin_groups:
+      - lxd
+      - libvirt
+      - docker
+
+- name: Kubernetes Setup
   hosts: kubernetes
   roles:
-    - kubernetes
+    - microk8s
+  tasks:
+    - name: Add helm charts
+      loop: "{{ helm_charts }}"
+      loop_control:
+        loop_var: __chart
+        label: "{{ __chart.name }}"
+      when: not ansible_check_mode
+      kubernetes.core.helm: "{{ __chart }}"

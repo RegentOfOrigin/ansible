@@ -1,0 +1,8 @@
+dependencies:
+  - role: apt
+    vars:
+      apt_packages:
+        - snapd
+
+collections:
+  - community.general

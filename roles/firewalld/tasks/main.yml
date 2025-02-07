@@ -1,0 +1,37 @@
+- name: Enable firewalld
+  become: true
+  when: not ansible_check_mode
+  ansible.builtin.service:
+    name: firewalld
+    enabled: true
+    state: started
+
+- name: Populate service facts
+  ansible.builtin.service_facts:
+
+- name: Collect firewalld facts
+  become: true
+  register: __info
+  ansible.posix.firewalld_info:
+    active_zones: true
+
+- name: Set firewalld facts
+  ansible.builtin.set_fact:
+    __firewalld:
+      default: "{{ __info.firewalld_info.default_zone }}"
+      zones: "{{  __info.collected_zones }}"
+
+- name: Zones
+  loop: "{{ firewalld_zones | unique }}"
+  loop_control:
+    loop_var: __zone
+    label: "{{ __zone.zone | default('default') }}"
+  ansible.builtin.include_tasks: zone.yml
+
+- name: Disable ufw
+  become: true
+  when: services['ufw.service']
+  ansible.builtin.service:
+    name: ufw
+    state: stopped
+    enabled: false

@@ -1,0 +1,30 @@
+firewalld_zones:
+  - zone: internal
+    default: true
+    services:
+      - dhcpv6-client
+      - mdns
+      - samba-client
+      - ssh
+
+users_sudoers:
+  - name: allow-sudo-passwordless
+    group: sudo
+    commands: ALL
+    nopassword: true
+
+users_admin_groups:
+  - sudo
+
+cockpit_overrides:
+  - name: apps
+    content:
+      tools:
+        index: null
+
+apt_minimize_manual: true
+
+apt_autoclean: true
+
+apt_autopurge: true
+
